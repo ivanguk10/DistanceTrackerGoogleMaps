@@ -1,11 +1,17 @@
 package com.example.googlemapsapp
 
+import android.annotation.SuppressLint
 import androidx.fragment.app.Fragment
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.lifecycleScope
+import com.example.googlemapsapp.databinding.FragmentMapsBinding
+import com.example.googlemapsapp.util.enable
+import com.example.googlemapsapp.util.hide
+import com.example.googlemapsapp.util.show
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -13,35 +19,66 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-class MapsFragment : Fragment() {
+class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButtonClickListener {
 
-    private val callback = OnMapReadyCallback { googleMap ->
-        /**
-         * Manipulates the map once available.
-         * This callback is triggered when the map is ready to be used.
-         * This is where we can add markers or lines, add listeners or move the camera.
-         * In this case, we just add a marker near Sydney, Australia.
-         * If Google Play services is not installed on the device, the user will be prompted to
-         * install it inside the SupportMapFragment. This method will only be triggered once the
-         * user has installed Google Play services and returned to the app.
-         */
-        val sydney = LatLng(-34.0, 151.0)
-        googleMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        googleMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
-    }
+    private var _binding: FragmentMapsBinding? = null
+    private val binding get() = _binding!!
+
+    private lateinit var map: GoogleMap
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        return inflater.inflate(R.layout.fragment_maps, container, false)
+
+        _binding = FragmentMapsBinding.inflate(layoutInflater, container, false)
+
+
+        binding.startBtn.setOnClickListener {  }
+        binding.stopBtn.setOnClickListener {  }
+        binding.resetBtn.setOnClickListener {  }
+
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
-        mapFragment?.getMapAsync(callback)
+        mapFragment?.getMapAsync(this)
+    }
+
+    @SuppressLint("MissingPermission")
+    override fun onMapReady(googleMap: GoogleMap?) {
+        map = googleMap!!
+        map.isMyLocationEnabled = true
+        map.setOnMyLocationButtonClickListener(this)
+
+        map.uiSettings.apply {
+            isZoomControlsEnabled = false
+            isZoomGesturesEnabled = false
+            isCompassEnabled = false
+            isRotateGesturesEnabled = false
+            isScrollGesturesEnabled = false
+            isTiltGesturesEnabled = false
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
+    override fun onMyLocationButtonClick(): Boolean {
+        binding.hintTextView.animate().alpha(0f).duration = 1500
+        lifecycleScope.launch {
+            delay(2500)
+            binding.hintTextView.hide()
+            binding.startBtn.show()
+        }
+        return false
     }
 }

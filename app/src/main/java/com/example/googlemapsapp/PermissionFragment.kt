@@ -6,8 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
-import com.example.googlemapsapp.Permission.checkLocationPermission
-import com.example.googlemapsapp.Permission.requestLocationPermission
+import com.example.googlemapsapp.util.Permission.checkLocationPermission
+import com.example.googlemapsapp.util.Permission.requestLocationPermission
 import com.example.googlemapsapp.databinding.FragmentPermissionBinding
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog

@@ -7,4 +7,7 @@
     <string name="permission">Welcome to Distance Tracker. In order to use our app we will first to request location permission from you. Otherwise we will not be able to provide you with our service. If you are agree press the CONTINUE button.</string>
     <string name="o">o</string>
     <string name="goNext">Continue</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="reset">Reset</string>
 </resources>

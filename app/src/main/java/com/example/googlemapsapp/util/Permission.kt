@@ -1,4 +1,4 @@
-package com.example.googlemapsapp
+package com.example.googlemapsapp.util
 
 import android.Manifest
 import android.content.Context

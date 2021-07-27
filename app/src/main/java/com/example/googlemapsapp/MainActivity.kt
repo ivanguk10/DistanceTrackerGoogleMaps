@@ -3,8 +3,8 @@ package com.example.googlemapsapp
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.navigation.NavController
-import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
+import com.example.googlemapsapp.util.Permission.checkLocationPermission
 import com.example.googlemapsapp.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -21,6 +21,10 @@ class MainActivity : AppCompatActivity() {
             .findFragmentById(R.id.fragmentContainerView) as NavHostFragment
 
         navController = navHostFragment.navController
+
+        if (checkLocationPermission(this)) {
+            navController.navigate(R.id.action_permissionFragment_to_mapsFragment)
+        }
 
     }
 
