@@ -10,17 +10,17 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".PermissionFragment">
+        tools:context=".ui.permission.PermissionFragment">
 
 
         <ImageView
             android:id="@+id/trackerImage"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:layout_marginBottom="32dp"
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_marginBottom="8dp"
             android:contentDescription="@string/o"
             android:scaleType="centerCrop"
-            android:src="@drawable/map"
+            android:src="@drawable/map_new3"
 
             app:layout_constraintBottom_toTopOf="@+id/permissionTitle"
             app:layout_constraintEnd_toEndOf="parent"

@@ -1,9 +1,10 @@
-package com.example.googlemapsapp
+package com.example.googlemapsapp.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
+import com.example.googlemapsapp.R
 import com.example.googlemapsapp.util.Permission.checkLocationPermission
 import com.example.googlemapsapp.databinding.ActivityMainBinding
 
