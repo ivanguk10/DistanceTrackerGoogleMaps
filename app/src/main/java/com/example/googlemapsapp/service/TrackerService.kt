@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_LOW
 import android.content.Intent
+import android.location.Location
 import android.os.Build
 import android.os.Looper
 import android.util.Log
@@ -16,10 +17,7 @@ import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_STOP
 import com.example.googlemapsapp.util.Constants.Companion.NOTIFICATION_CHANNEL_ID
 import com.example.googlemapsapp.util.Constants.Companion.NOTIFICATION_CHANNEL_NAME
 import com.example.googlemapsapp.util.Constants.Companion.NOTIFICATION_ID
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.*
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -37,6 +35,12 @@ class TrackerService: LifecycleService() {
 
     companion object {
         val started = MutableLiveData<Boolean>()
+        val locationsList = MutableLiveData<MutableList<LatLng>>()
+    }
+
+    private fun setInitialValues() {
+        started.postValue(false)
+        locationsList.postValue(mutableListOf())
     }
 
     private val locationCallback = object : LocationCallback() {
@@ -44,19 +48,23 @@ class TrackerService: LifecycleService() {
             super.onLocationResult(result)
             result.locations.let { locations ->
                 for (location in locations) {
-                    val newLatLong = LatLng(location.latitude, location.longitude)
-                    Log.d("TrackerService", newLatLong.toString())
+                    updateLocationList(location)
                 }
             }
         }
     }
 
-    private fun setInitialValues() {
-        started.postValue(false)
+    private fun updateLocationList(location: Location) {
+        val newLatLong = LatLng(location.latitude, location.longitude)
+        locationsList.value?.apply {
+            add(newLatLong)
+            locationsList.postValue(this)
+        }
     }
 
     override fun onCreate() {
         setInitialValues()
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         super.onCreate()
     }
 
@@ -89,8 +97,8 @@ class TrackerService: LifecycleService() {
     @SuppressLint("MissingPermission")
     private fun startLocationUpdates() {
         val locationRequest = LocationRequest().apply {
-            interval = 4000
-            fastestInterval = 2000
+            interval = 4000L
+            fastestInterval = 2000L
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
         fusedLocationProviderClient.requestLocationUpdates(

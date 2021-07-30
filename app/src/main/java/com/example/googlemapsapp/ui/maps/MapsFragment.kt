@@ -2,29 +2,35 @@ package com.example.googlemapsapp.ui.maps
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.Color
 import androidx.fragment.app.Fragment
 
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.googlemapsapp.R
 import com.example.googlemapsapp.databinding.FragmentMapsBinding
 import com.example.googlemapsapp.service.TrackerService
+import com.example.googlemapsapp.util.*
 import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_START
+import com.example.googlemapsapp.util.MapUtil.setLocationCamera
 import com.example.googlemapsapp.util.Permission.checkBackgroundLocationPermission
 import com.example.googlemapsapp.util.Permission.requestBackgroundLocationPermission
-import com.example.googlemapsapp.util.disable
-import com.example.googlemapsapp.util.enable
-import com.example.googlemapsapp.util.hide
-import com.example.googlemapsapp.util.show
+import com.google.android.gms.maps.CameraUpdateFactory
 
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.ButtCap
+import com.google.android.gms.maps.model.JointType
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.PolylineOptions
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,6 +44,7 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
     private val binding get() = _binding!!
 
     private lateinit var map: GoogleMap
+    private var locationsList = mutableListOf<LatLng>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -76,6 +83,41 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
             isRotateGesturesEnabled = false
             isScrollGesturesEnabled = false
             isTiltGesturesEnabled = false
+        }
+        observeTrackerService()
+    }
+
+    private fun observeTrackerService() {
+        TrackerService.locationsList.observe(viewLifecycleOwner, {
+            if (it != null) {
+                locationsList = it
+                drawPolyline()
+                followPolyline()
+            }
+        })
+    }
+
+    private fun drawPolyline() {
+        val polyLine = map.addPolyline(
+            PolylineOptions().apply {
+                width(10f)
+                color(Color.BLUE)
+                jointType(JointType.ROUND)
+                startCap(ButtCap())
+                endCap(ButtCap())
+                addAll(locationsList)
+            }
+        )
+    }
+
+    private fun followPolyline() {
+        if (locationsList.isNotEmpty()) {
+            map.animateCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    setLocationCamera(
+                        locationsList.last()
+                    )
+                ), 1000, null)
         }
     }
 
