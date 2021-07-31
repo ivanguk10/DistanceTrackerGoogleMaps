@@ -13,12 +13,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.example.googlemapsapp.R
 import com.example.googlemapsapp.databinding.FragmentMapsBinding
 import com.example.googlemapsapp.service.TrackerService
 import com.example.googlemapsapp.util.*
 import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_START
+import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_STOP
 import com.example.googlemapsapp.util.MapUtil.setLocationCamera
 import com.example.googlemapsapp.util.Permission.checkBackgroundLocationPermission
 import com.example.googlemapsapp.util.Permission.requestBackgroundLocationPermission
@@ -27,10 +29,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.ButtCap
-import com.google.android.gms.maps.model.JointType
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.maps.model.*
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,6 +45,10 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
     private lateinit var map: GoogleMap
     private var locationsList = mutableListOf<LatLng>()
 
+    private var startTime = 0L
+    private var stopTime = 0L
+    val started = MutableLiveData<Boolean>(false)
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -54,11 +57,15 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
 
         _binding = FragmentMapsBinding.inflate(layoutInflater, container, false)
 
+        binding.lifecycleOwner = viewLifecycleOwner
+        binding.tracking = this
 
         binding.startBtn.setOnClickListener {
             onStartButtonClicked()
         }
-        binding.stopBtn.setOnClickListener {  }
+        binding.stopBtn.setOnClickListener {
+            onStopButtonClicked()
+        }
         binding.resetBtn.setOnClickListener {  }
 
         return binding.root
@@ -91,8 +98,25 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
         TrackerService.locationsList.observe(viewLifecycleOwner, {
             if (it != null) {
                 locationsList = it
+                if (locationsList.size > 1) {
+                    binding.stopBtn.enable()
+                }
                 drawPolyline()
                 followPolyline()
+            }
+        })
+        TrackerService.started.observe(viewLifecycleOwner, {
+            started.value = it
+        })
+
+        TrackerService.starTime.observe(viewLifecycleOwner, {
+            startTime = it
+        })
+
+        TrackerService.stopTime.observe(viewLifecycleOwner, {
+            stopTime = it
+            if (stopTime != 0L) {
+                showAllPath()
             }
         })
     }
@@ -119,6 +143,18 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
                     )
                 ), 1000, null)
         }
+    }
+
+    private fun showAllPath() {
+        val bounds = LatLngBounds.Builder()
+        for (location in locationsList) {
+            bounds.include(location)
+        }
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngBounds(
+                bounds.build(), 100
+            ), 2000, null
+        )
     }
 
     override fun onMyLocationButtonClick(): Boolean {
@@ -174,6 +210,22 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
 
         }
         timer.start()
+    }
+
+    private fun onStopButtonClicked() {
+        stopForegroundService()
+        binding.stopBtn.hide()
+        binding.startBtn.setBackgroundColor(ContextCompat.getColor(requireContext() ,R.color.green_500))
+        binding.startBtn.show()
+        binding.startBtn.animate().alpha(1f).duration = 1500
+        if (binding.startBtn.visibility == View.VISIBLE) {
+            Toast.makeText(requireContext(), "Visible", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopForegroundService() {
+        binding.startBtn.disable()
+        sendActionCommandToService(ACTION_SERVICE_STOP)
     }
 
     private fun sendActionCommandToService(action: String) {

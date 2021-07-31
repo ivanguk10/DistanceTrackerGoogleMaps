@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_LOW
+import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.os.Build
@@ -17,6 +18,7 @@ import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_STOP
 import com.example.googlemapsapp.util.Constants.Companion.NOTIFICATION_CHANNEL_ID
 import com.example.googlemapsapp.util.Constants.Companion.NOTIFICATION_CHANNEL_NAME
 import com.example.googlemapsapp.util.Constants.Companion.NOTIFICATION_ID
+import com.example.googlemapsapp.util.MapUtil
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,11 +38,15 @@ class TrackerService: LifecycleService() {
     companion object {
         val started = MutableLiveData<Boolean>()
         val locationsList = MutableLiveData<MutableList<LatLng>>()
+        val starTime = MutableLiveData<Long>()
+        val stopTime = MutableLiveData<Long>()
     }
 
     private fun setInitialValues() {
         started.postValue(false)
         locationsList.postValue(mutableListOf())
+        starTime.postValue(0L)
+        stopTime.postValue(0L)
     }
 
     private val locationCallback = object : LocationCallback() {
@@ -49,6 +55,7 @@ class TrackerService: LifecycleService() {
             result.locations.let { locations ->
                 for (location in locations) {
                     updateLocationList(location)
+                    updateNotificationPeriodically()
                 }
             }
         }
@@ -78,6 +85,7 @@ class TrackerService: LifecycleService() {
                 }
                 ACTION_SERVICE_STOP -> {
                     started.postValue(false)
+                    stopForegroundService()
                 }
                 else -> {}
             }
@@ -85,6 +93,7 @@ class TrackerService: LifecycleService() {
 
         return super.onStartCommand(intent, flags, startId)
     }
+
 
     private fun startForegroundService() {
         createNotificationChannel()
@@ -106,6 +115,7 @@ class TrackerService: LifecycleService() {
             locationCallback,
             Looper.getMainLooper()
         )
+        starTime.postValue(System.currentTimeMillis())
     }
 
     private fun createNotificationChannel() {
@@ -117,5 +127,27 @@ class TrackerService: LifecycleService() {
             )
             notificationManager.createNotificationChannel(channel)
         }
+    }
+
+    private fun updateNotificationPeriodically() {
+        notification.apply {
+            setContentTitle("Distance traveled")
+            setContentText(locationsList.value?.let { MapUtil.calculateDistance(it) } + "km")
+        }
+        notificationManager.notify(NOTIFICATION_ID, notification.build())
+    }
+
+    private fun stopForegroundService() {
+        removeLocationUpdates()
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(
+            NOTIFICATION_ID
+        )
+        stopForeground(true)
+        stopSelf()
+        stopTime.postValue(System.currentTimeMillis())
+    }
+
+    private fun removeLocationUpdates() {
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback)
     }
 }
