@@ -23,7 +23,7 @@ object MapUtil {
         val minutes = (time/(1000 * 60) % 60)
         val hours = (time/ (1000 * 60 * 60) % 24)
 
-        return "$hours: $minutes: $seconds"
+        return "$hours:$minutes:$seconds"
     }
 
     fun calculateDistance(locationList: MutableList<LatLng>): String {

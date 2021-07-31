@@ -15,15 +15,21 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.example.googlemapsapp.R
 import com.example.googlemapsapp.databinding.FragmentMapsBinding
+import com.example.googlemapsapp.model.Result
 import com.example.googlemapsapp.service.TrackerService
 import com.example.googlemapsapp.util.*
 import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_START
 import com.example.googlemapsapp.util.Constants.Companion.ACTION_SERVICE_STOP
+import com.example.googlemapsapp.util.MapUtil.calculateDistance
+import com.example.googlemapsapp.util.MapUtil.calculateTime
 import com.example.googlemapsapp.util.MapUtil.setLocationCamera
 import com.example.googlemapsapp.util.Permission.checkBackgroundLocationPermission
 import com.example.googlemapsapp.util.Permission.requestBackgroundLocationPermission
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 
 import com.google.android.gms.maps.GoogleMap
@@ -44,10 +50,13 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
 
     private lateinit var map: GoogleMap
     private var locationsList = mutableListOf<LatLng>()
+    private var polylineList = mutableListOf<Polyline>()
 
     private var startTime = 0L
     private var stopTime = 0L
     val started = MutableLiveData<Boolean>(false)
+
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,7 +75,12 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
         binding.stopBtn.setOnClickListener {
             onStopButtonClicked()
         }
-        binding.resetBtn.setOnClickListener {  }
+        binding.resetBtn.setOnClickListener {
+            resetButtonClicked()
+        }
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+
 
         return binding.root
     }
@@ -117,6 +131,7 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
             stopTime = it
             if (stopTime != 0L) {
                 showAllPath()
+                displayResults()
             }
         })
     }
@@ -132,6 +147,7 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
                 addAll(locationsList)
             }
         )
+        polylineList.add(polyLine)
     }
 
     private fun followPolyline() {
@@ -155,6 +171,24 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
                 bounds.build(), 100
             ), 2000, null
         )
+    }
+
+    private fun displayResults() {
+        val result = Result(
+            calculateDistance(locationsList),
+            calculateTime(startTime, stopTime)
+        )
+        lifecycleScope.launch {
+            delay(2500)
+            val action = MapsFragmentDirections.actionMapsFragmentToResultFragment(result)
+            findNavController().navigate(action)
+            binding.startBtn.apply {
+                hide()
+                enable()
+            }
+            binding.stopBtn.hide()
+            binding.resetBtn.show()
+        }
     }
 
     override fun onMyLocationButtonClick(): Boolean {
@@ -226,6 +260,31 @@ class MapsFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButto
     private fun stopForegroundService() {
         binding.startBtn.disable()
         sendActionCommandToService(ACTION_SERVICE_STOP)
+    }
+
+    private fun resetButtonClicked() {
+        mapReset()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun mapReset() {
+        fusedLocationProviderClient.lastLocation.addOnCompleteListener {
+            val lastKnownLocation = LatLng(
+                it.result.latitude,
+                it.result.longitude
+            )
+            map.animateCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    setLocationCamera(lastKnownLocation)
+                )
+            )
+            for (polyLine in polylineList) {
+                polyLine.remove()
+            }
+            locationsList.clear()
+            binding.resetBtn.hide()
+            binding.startBtn.show()
+        }
     }
 
     private fun sendActionCommandToService(action: String) {
